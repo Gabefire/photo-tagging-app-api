@@ -4,6 +4,7 @@ import jwt, { JsonWebTokenError, JwtPayload } from "jsonwebtoken";
 import verifyToken from "../util/auth";
 import asyncHandler from "express-async-handler";
 import bcrypt from "bcryptjs";
+import { body, validationResult } from "express-validator";
 
 import User from "../models/user";
 import HiScore from "../models/high_score";
@@ -75,10 +76,32 @@ router.post(
 );
 
 // POST sign up
-router.post(
-  "/sign-up",
+router.post("/sign-up", [
+  body("username")
+    .trim()
+    .notEmpty()
+    .withMessage("Please provide a username")
+    .escape()
+    .custom(async (value: string) => {
+      const user = await User.find({ username: value }).exec();
+      if (user) {
+        throw new Error("username already taken");
+      }
+    }),
+  body("password")
+    .trim()
+    .isLength({ min: 5 })
+    .withMessage("password must be at least 5 characters"),
+  body("passwordConfirmation")
+    .trim()
+    .custom((value: string, { req }) => {
+      return value === req.body.password;
+    }),
   asyncHandler(async (req, res, next) => {
-    if (req.body.password === undefined) throw Error("password not entered");
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors });
+    }
     bcrypt.hash(
       req.body.password,
       10,
@@ -95,8 +118,8 @@ router.post(
         res.sendStatus(200);
       }
     );
-  })
-);
+  }),
+]);
 
 // POST timer session cookie
 router.post("/start-timer", (req, res, next) => {
