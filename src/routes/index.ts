@@ -26,7 +26,7 @@ router.get("/", function (req, res, next) {
 router.get(
   "/tags",
   asyncHandler(async (req, res, next) => {
-    const tags = Tag.find({}).exec();
+    const tags = await Tag.find({}).exec();
     res.json({ tags });
   })
 );
@@ -50,12 +50,17 @@ router.post(
       const date = Date.now();
       time = date - req.session.iat;
     } else {
-      res.sendStatus(403);
+      req.session.destroy((err: Error) => {
+        if (err) {
+          throw new Error(err.message);
+        }
+      });
+      res.status(403).json({ message: "no session cookie" });
       return next();
     }
     jwt.verify(req.token, JWTSecret, async (err, authData: JwtPayload) => {
       if (err) {
-        res.sendStatus(403);
+        res.sendStatus(403).json({ message: "JWT token did not match" });
       } else {
         const hiScore = new HiScore({
           time: time,
@@ -63,14 +68,12 @@ router.post(
         });
         try {
           const results = await hiScore.save();
+          console.log("JWT did not match");
           res.json({ results });
         } catch (err) {
           return next(err);
         }
       }
-    });
-    req.session.destroy((err: Error) => {
-      return next(err);
     });
   })
 );
@@ -83,9 +86,13 @@ router.post("/sign-up", [
     .withMessage("please provide a username")
     .escape()
     .custom(async (value: string) => {
-      const user = await User.find({ username: value }).exec();
-      if (user) {
-        throw new Error("username already taken");
+      try {
+        const user = await User.find({ username: value }).exec();
+        if (user) {
+          throw new Error("username already taken");
+        }
+      } catch (err) {
+        return true;
       }
     }),
   body("password")
@@ -100,7 +107,7 @@ router.post("/sign-up", [
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      res.status(400).json({ errors });
+      res.status(400).json(errors);
     }
     bcrypt.hash(
       req.body.password,
@@ -121,11 +128,12 @@ router.post("/sign-up", [
   }),
 ]);
 
-// POST timer session cookie
-router.post("/start-timer", (req, res, next) => {
+// GET timer session cookie
+router.get("/start-timer", (req, res, next) => {
   const date = Date.now();
   req.session.iat = date;
-  res.sendStatus(200);
+  req.session.save();
+  res.status(200).send(req.sessionID);
 });
 
 // POST log in

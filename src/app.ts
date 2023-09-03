@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
-import session from "cookie-session";
+import session from "express-session";
+import mongoStore from "connect-mongo";
 import logger from "morgan";
 import mongoose from "mongoose";
 
@@ -18,6 +19,7 @@ dotenv.config();
 const app = express();
 
 // deployment
+app.set("trust proxy", 1);
 app.use(compression());
 app.use(helmet());
 const limiter = rateLimit({
@@ -30,28 +32,48 @@ app.use(limiter);
 mongoose.set("strictQuery", false);
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URL);
+  await mongoose.connect(process.env.MONGO_URL, {
+    dbName: "photo-tag-app",
+    retryWrites: true,
+    w: "majority",
+  });
 }
 main().catch((err) => console.log(err));
 
 app.use(logger("dev"));
 
-const corsOptions = {
-  origin: "https://https://photo-tagging-app-api-production.up.railway.app/",
-};
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: process.env.DOMAIN,
+    methods: ["POST", "GET", "PUT", "OPTIONS", "HEAD"],
+    credentials: true,
+  })
+);
 
 const sessionKey = process.env.SESSION_KEY;
 
 //Session cookie expires in one hour
 app.use(
+  ["/start-timer", "/highscores"],
   session({
+    name: "time session",
     secret: sessionKey,
+    resave: true,
+    saveUninitialized: true,
+    store: mongoStore.create({
+      mongoUrl: process.env.MONGO_URL,
+      dbName: "photo-tag-app",
+    }),
+    cookie: {
+      maxAge: 100 * 60 * 60,
+      secure: true,
+      sameSite: "none",
+      httpOnly: false,
+    },
   })
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/", indexRouter);
 
