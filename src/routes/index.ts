@@ -70,7 +70,7 @@ router.post(
       }
     });
     req.session.destroy((err: Error) => {
-      console.error(err);
+      return next(err);
     });
   })
 );
@@ -80,7 +80,7 @@ router.post("/sign-up", [
   body("username")
     .trim()
     .notEmpty()
-    .withMessage("Please provide a username")
+    .withMessage("please provide a username")
     .escape()
     .custom(async (value: string) => {
       const user = await User.find({ username: value }).exec();
