@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import session from "express-session";
 import logger from "morgan";
 import mongoose from "mongoose";
+import cors from "cors";
 
 import indexRouter from "./routes/index";
 
@@ -23,9 +24,20 @@ main().catch((err) => console.log(err));
 
 app.use(logger("dev"));
 
+const corsOptions = {
+  origin: "http://localhost:3000",
+};
+app.use(cors(corsOptions));
+
 const sessionKey = process.env.SESSION_KEY;
 
-app.use("/api/start", session({ secret: sessionKey }));
+app.use(
+  session({
+    secret: sessionKey,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
