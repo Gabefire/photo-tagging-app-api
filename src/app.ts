@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
-import session from "express-session";
+import session from "cookie-session";
 import logger from "morgan";
 import mongoose from "mongoose";
 
@@ -20,25 +20,24 @@ const app = express();
 // deployment
 app.use(compression());
 app.use(helmet());
-const limter = rateLimit({
+const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 20,
 });
-app.use(limter);
+app.use(limiter);
 
 // Set up mongoose connection
 mongoose.set("strictQuery", false);
-const mongoDB = process.env.MONGODB_URI;
 
 async function main() {
-  await mongoose.connect(mongoDB);
+  await mongoose.connect(process.env.MONGODB_URL);
 }
 main().catch((err) => console.log(err));
 
 app.use(logger("dev"));
 
 const corsOptions = {
-  origin: "http://localhost:3000",
+  origin: "https://https://photo-tagging-app-api-production.up.railway.app/",
 };
 app.use(cors(corsOptions));
 
@@ -48,18 +47,16 @@ const sessionKey = process.env.SESSION_KEY;
 app.use(
   session({
     secret: sessionKey,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: true, maxAge: 1000 * 60 * 60 },
   })
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/api", indexRouter);
+app.use("/", indexRouter);
 
-const port = 3000;
-app.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+const port = +process.env.PORT || 3000;
+console.log(port);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`⚡️[server]: Server is running on port ${port}`);
 });
