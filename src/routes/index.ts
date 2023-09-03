@@ -44,20 +44,21 @@ router.post(
   "/highscores",
   verifyToken,
   asyncHandler(async (req, res, next) => {
-    console.log(req.session.iat);
     let time = 0;
     if (typeof req.session.iat === "number") {
       const date = Date.now();
       time = date - req.session.iat;
+    } else {
+      res.sendStatus(403);
+      return next();
     }
     jwt.verify(req.token, JWTSecret, async (err, authData: JwtPayload) => {
-      console.log(authData);
       if (err) {
         res.sendStatus(403);
       } else {
         const hiScore = new HiScore({
           time: time,
-          userName: authData.user.username,
+          user: authData.user.username,
         });
         try {
           const results = await hiScore.save();
@@ -66,6 +67,9 @@ router.post(
           return next(err);
         }
       }
+    });
+    req.session.destroy((err: Error) => {
+      console.error(err);
     });
   })
 );
@@ -94,19 +98,17 @@ router.post(
   })
 );
 
-// GET get timer session cookie
-router.get("/start-timer", (req, res, next) => {
+// POST timer session cookie
+router.post("/start-timer", (req, res, next) => {
   const date = Date.now();
   req.session.iat = date;
-  console.log(req.session.iat);
-  res.json({ message: req.session.iat });
+  res.sendStatus(200);
 });
 
 // POST log in
 router.post(
   "/login",
   asyncHandler(async (req, res) => {
-    // auth stuff with postman and mongo
     const user = await User.findOne({ username: req.body.username }).exec();
     if (!user) throw Error("User not found");
     const match = await bcrypt.compare(req.body.password, user.password);

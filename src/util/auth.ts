@@ -11,7 +11,6 @@ export default function verifyToken(
 ): RequestHandler {
   // Get auth header value
   const bearerHeader = req.headers["authorization"];
-  console.log(bearerHeader);
   if (bearerHeader) {
     const token = bearerHeader.split(" ")[1];
     req.token = token;
