@@ -3,16 +3,12 @@ import express from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import session from "express-session";
-import passport from "passport";
-import jwt from "jsonwebtoken";
-import LocalStrategy from "passport-local";
 import logger from "morgan";
 import mongoose from "mongoose";
 
 import indexRouter from "./routes/index";
 
 dotenv.config();
-LocalStrategy.Strategy;
 
 const app = express();
 
@@ -26,6 +22,10 @@ async function main() {
 main().catch((err) => console.log(err));
 
 app.use(logger("dev"));
+
+const sessionKey = process.env.SESSION_KEY;
+
+app.use("/api/start", session({ secret: sessionKey }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
