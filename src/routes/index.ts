@@ -35,7 +35,7 @@ router.get(
 router.get(
   "/highscores",
   asyncHandler(async (req, res, next) => {
-    const hiScores = await HiScore.find().sort({ time: 1 }).exec();
+    const hiScores = await HiScore.find().sort({ time: 1 }).limit(10).exec();
     res.json({ hiScores });
   })
 );
